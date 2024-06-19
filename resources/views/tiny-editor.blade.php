@@ -8,8 +8,10 @@
     @endphp
 
     <div wire:ignore x-ignore ax-load
-        ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('tinyeditor', 'amidesfahani/filament-tinyeditor') }}"
-        x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('tiny-css', package: 'amidesfahani/filament-tinyeditor'))]" x-load-js="[@js(\Filament\Support\Facades\FilamentAsset::getScriptSrc($getLanguageId(), package: 'amidesfahani/filament-tinyeditor'))]" x-data="tinyeditor({
+         ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('tinyeditor', 'amidesfahani/filament-tinyeditor') }}"
+         x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('tiny-css', package: 'amidesfahani/filament-tinyeditor'))]"
+         x-load-js="[@js(\Filament\Support\Facades\FilamentAsset::getScriptSrc($getLanguageId(), package: 'amidesfahani/filament-tinyeditor'))]"
+         x-data="tinyeditor({
             state: $wire.{{ $applyStateBindingModifiers("entangle('{$statePath}')", isOptimisticallyLive: false) }},
             statePath: '{{ $statePath }}',
             selector: '#{{ $textareaID }}',
@@ -45,7 +47,55 @@
             convert_urls: {{ $getConvertUrls() ? 'true' : 'false' }},
             font_size_formats: '{{ $getFontSizes() }}',
             fontfamily: '{{ $getFontFamilies() }}',
-            setup: null,
+            setup: (editor) => {
+                const specialChars = @js($getAutoComplete());
+
+					const onAction = (autocompleteApi, rng, value) => {
+						editor.selection.setRng(rng);
+						editor.insertContent(value);
+						autocompleteApi.hide();
+					};
+
+					const getMatchedChars = (pattern) => {
+						return specialChars.filter(char => char.text.indexOf(pattern) !== -1);
+					};
+
+
+					editor.ui.registry.addAutocompleter('sp_variables', {
+						trigger: '\{\{',
+						minChars: 0,
+						columns: 1,
+						highlightOn: ['char_name'],
+						onAction: onAction,
+						fetch: (pattern) => {
+							return new Promise((resolve) => {
+								const results = getMatchedChars(pattern).map(char => ({
+									type: 'cardmenuitem',
+									value: char.value,
+									label: char.text,
+									items: [
+										{
+											type: 'cardcontainer',
+											direction: 'vertical',
+											items: [
+												{
+													type: 'cardtext',
+													text: char.text,
+													name: 'char_name'
+												},
+												{
+													type: 'cardtext',
+													text: char.description
+												}
+											]
+										}
+									]
+								}));
+								resolve(results);
+							});
+						}
+					});
+            },
             disabled: @js($isDisabled),
             locale: '{{ app()->getLocale() }}',
             placeholder: @js($getPlaceholder()),
@@ -59,21 +109,10 @@
         @unless ($isDisabled())
             <input id="{{ $textareaID }}" type="hidden" x-ref="tinymce" placeholder="{{ $getPlaceholder() }}">
         @else
-            <div x-html="state" @style(['max-height: ' . $getPreviewMaxHeight() . 'px' => $getPreviewMaxHeight() > 0, 'min-height: ' . $getPreviewMinHeight() . 'px' => $getPreviewMinHeight() > 0])
-                class="block w-full p-3 overflow-y-auto prose transition duration-75 bg-white border border-gray-300 rounded-lg shadow-sm max-w-none opacity-70 dark:prose-invert dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+            <div x-html="state"
+                 @style(['max-height: ' . $getPreviewMaxHeight() . 'px' => $getPreviewMaxHeight() > 0, 'min-height: ' . $getPreviewMinHeight() . 'px' => $getPreviewMinHeight() > 0])
+                 class="block w-full p-3 overflow-y-auto prose transition duration-75 bg-white border border-gray-300 rounded-lg shadow-sm max-w-none opacity-70 dark:prose-invert dark:border-gray-600 dark:bg-gray-700 dark:text-white">
             </div>
         @endunless
     </div>
 </x-dynamic-component>
-
-@pushOnce('scripts')
-    <script>
-        // window.addEventListener('beforeunload', (event) => {
-        //     if (tinymce.activeEditor.isDirty()) {
-        //         event.preventDefault();
-        // 		// Included for legacy support, e.g. Chrome/Edge < 119
-        // 		event.returnValue = '{{ __('Are you sure you want to leave?') }}';
-        //     }
-        // });
-    </script>
-@endPushOnce

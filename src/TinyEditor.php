@@ -17,6 +17,7 @@ class TinyEditor extends Field implements Contracts\CanBeLengthConstrained, Cont
     use HasExtraAlpineAttributes;
     use HasExtraInputAttributes;
 
+
     protected string $view = 'filament-tinyeditor::tiny-editor';
     protected string $profile = 'default';
     protected bool $isSimple = false;
@@ -45,6 +46,7 @@ class TinyEditor extends Field implements Contracts\CanBeLengthConstrained, Cont
     protected string $tiny;
     protected string $languageVersion;
     protected string $languagePackage;
+    protected \Closure|array $autoComplete;
 
     protected function setUp(): void
     {
@@ -53,6 +55,7 @@ class TinyEditor extends Field implements Contracts\CanBeLengthConstrained, Cont
         $this->tiny = Tiny::version();
         $this->languageVersion = Tiny::languageVersion();
         $this->languagePackage = Tiny::languagePackage();
+        $this->autoComplete = [];
 
         $this->language = app()->getLocale();
         $this->direction = config('filament-tinyeditor.direction', 'ltr');
@@ -523,5 +526,16 @@ class TinyEditor extends Field implements Contracts\CanBeLengthConstrained, Cont
     public function getLicenseKey(): string
     {
         return config('filament-tinyeditor.license_key', 'gpl');
+    }
+
+    public function setAutoComplete(\Closure|array $values): static
+    {
+        $this->autoComplete = $values;
+        return $this;
+    }
+
+    public function getAutoComplete(): array
+    {
+        return $this->evaluate($this->autoComplete) ?? [];
     }
 }
