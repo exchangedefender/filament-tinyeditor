@@ -33,7 +33,6 @@ class TinyEditor extends Field implements Contracts\CanBeLengthConstrained, Cont
     protected bool $relativeUrls = false;
     protected bool $removeScriptHost = true;
     protected bool $convertUrls = true;
-    protected string $templates = '';
     protected string|bool $darkMode;
     protected string $skinsUI;
     protected string $skinsContent;
@@ -48,6 +47,8 @@ class TinyEditor extends Field implements Contracts\CanBeLengthConstrained, Cont
     protected string $languagePackage;
     protected \Closure|array $autoComplete;
 
+    protected $customConfig = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -56,6 +57,7 @@ class TinyEditor extends Field implements Contracts\CanBeLengthConstrained, Cont
         $this->languageVersion = Tiny::languageVersion();
         $this->languagePackage = Tiny::languagePackage();
         $this->autoComplete = [];
+        $this->customConfig = [];
 
         $this->language = app()->getLocale();
         $this->direction = config('filament-tinyeditor.direction', 'ltr');
@@ -75,16 +77,16 @@ class TinyEditor extends Field implements Contracts\CanBeLengthConstrained, Cont
             $toolbar = config('filament-tinyeditor.profiles.' . $this->profile . '.toolbar');
         }
 
-        if (! Str::contains($this->templates, 'template')) {
-            $toolbar .= ' template';
-        }
+//        if (! Str::contains($this->templates, 'template')) {
+//            $toolbar .= ' template';
+//        }
 
         return $toolbar;
     }
 
     public function getPlugins(): string
     {
-        $plugins = 'accordion autoresize codesample directionality advlist autolink link image lists charmap preview anchor pagebreak searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media table emoticons template help';
+        $plugins = 'accordion autoresize codesample directionality advlist autolink link image lists charmap preview anchor pagebreak searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media table emoticons help';
 
         if ($this->isSimple()) {
             $plugins = 'autoresize directionality emoticons link wordcount';
@@ -109,18 +111,6 @@ class TinyEditor extends Field implements Contracts\CanBeLengthConstrained, Cont
     public function getFileAttachmentsDirectory(): ?string
     {
         return filled($directory = $this->evaluate($this->fileAttachmentsDirectory)) ? $directory : config('filament-tinyeditor.profiles.' . $this->profile . '.upload_directory');
-    }
-
-    public function templates(string $templates): static
-    {
-        $this->templates = addslashes($templates);
-
-        return $this;
-    }
-
-    public function getTemplates(): string
-    {
-        return $this->templates;
     }
 
     public function language(string | \Closure $language): static
@@ -305,14 +295,23 @@ class TinyEditor extends Field implements Contracts\CanBeLengthConstrained, Cont
         return $this;
     }
 
-    public function getCustomConfigs(): string
+    public function getCustomConfigs(): array
     {
-        if (config('filament-tinyeditor.profiles.' . $this->profile . '.custom_configs')) {
-            return str_replace('"', "'", json_encode(config('filament-tinyeditor.profiles.' . $this->profile . '.custom_configs')));
-        }
-
-        return '{}';
+        return $this->customConfig;
+//        if (config('filament-tinyeditor.profiles.' . $this->profile . '.custom_configs')) {
+//            return str_replace('"', "'", json_encode(config('filament-tinyeditor.profiles.' . $this->profile . '.custom_configs')));
+//        }
+//
+//        return '{}';
     }
+
+    public function setCustomConfigs(array $config): self
+    {
+        $this->customConfig = $config;
+        return $this;
+    }
+
+
 
     public function darkMode(): string | bool
     {

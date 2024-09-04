@@ -1,20 +1,39 @@
 @php
+    use App\Support\Campaign\ThreatRedFlagLocation;
+    use App\Support\Campaign\ThreatRedFlagType;
     $statePath = $getStatePath();
 @endphp
 
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field" class="relative z-0">
     @php
+        $location = ThreatRedFlagLocation::EmailBody->value;
         $textareaID = 'tiny-editor-' . str_replace(['.', '#', '$'], '-', $getId()) . '-' . rand();
-    @endphp
+        $redFlagMenuItems = collect(ThreatRedFlagType::cases())
+        ->map(fn(ThreatRedFlagType $type) => [
+            'type' => 'menuitem',
+            'text' => $type->title(),
+            'onAction' => "onAction: () => editor.annotator.annotate('redflag', { location: '{$location}', type: '{$type->value}', })"
+        ])->toArray();
 
+    @endphp
+    {{--    {--}}
+    {{--    type: 'menuitem',--}}
+    {{--    text: 'Spoofed Links',--}}
+    {{--    onAction: () => editor.annotator.annotate('redflag', {--}}
+    {{--    location: 'message_body',--}}
+    {{--    type: 'spoofed_links',--}}
+    {{--    })--}}
+
+    {{--    },--}}
     <div wire:ignore x-ignore ax-load
          ax-load-src="{{ \Filament\Support\Facades\FilamentAsset::getAlpineComponentSrc('tinyeditor', 'amidesfahani/filament-tinyeditor') }}"
          x-load-css="[@js(\Filament\Support\Facades\FilamentAsset::getStyleHref('tiny-css', package: 'amidesfahani/filament-tinyeditor'))]"
          x-load-js="[@js(\Filament\Support\Facades\FilamentAsset::getScriptSrc($getLanguageId(), package: 'amidesfahani/filament-tinyeditor'))]"
          x-data="tinyeditor({
-            state: $wire.{{ $applyStateBindingModifiers("entangle('{$statePath}')", isOptimisticallyLive: false) }},
+            state: $wire.{{ $applyStateBindingModifiers("\$entangle('{$getStatePath()}')") }},
             statePath: '{{ $statePath }}',
             selector: '#{{ $textareaID }}',
+            external_plugins: {{json_encode($getExternalPlugins(), JSON_FORCE_OBJECT)}},
             plugins: '{{ $getPlugins() }}',
             toolbar: '{{ $getToolbar() }}',
             language: '{{ $getInterfaceLanguage() }}',
@@ -40,7 +59,6 @@
 			skin: ((localStorage.getItem('theme') ?? 'system') == 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) ? 'oxide-dark' : 'oxide',
 			content_css: ((localStorage.getItem('theme') ?? 'system') == 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) ? 'dark' : 'default', @endif
             toolbar_sticky: {{ $getToolbarSticky() ? 'true' : 'false' }},
-            templates: '{{ $getTemplates() }}',
             menubar: {{ $getShowMenuBar() ? 'true' : 'false' }},
             relative_urls: {{ $getRelativeUrls() ? 'true' : 'false' }},
             remove_script_host: {{ $getRemoveScriptHost() ? 'true' : 'false' }},
@@ -95,6 +113,67 @@
 							});
 						}
 					});
+
+					editor.ui.registry.addButton('annotate-redflag', {
+                        text: 'Simple Red Flag',
+                        onAction: () => {
+                          const comment = prompt('Comment with?');
+                          editor.annotator.annotate('redflag', {
+                            location: 'message_body',
+                            type: 'poor_grammar_and_spelling',
+                            custom_description: comment
+                          });
+                          editor.focus();
+                        }
+                  });
+
+                editor.ui.registry.addMenuButton('redflag', {
+                    text: 'Red Flag',
+                    fetch: (callback) => {
+                        const system = @js($redFlagMenuItems);
+                        const items = [
+                            {
+                                type: 'menuitem',
+                                text: 'Clear redflag',
+                                onAction: () => editor.annotator.remove('redflag'),
+                            },
+                            ...system.sort((a, b) => a.text.localeCompare(b.text)).map((d) => ({...d, onAction: eval(d.onAction)})),
+
+                        ]
+
+
+
+                        callback(items)
+                    }
+                });
+
+
+
+                editor.on('init', () => {
+                      editor.annotator.register('redflag', {
+                        persistent: true,
+                        directAnnotation: true,
+                        decorate: (uid, data) => ({
+                          attributes: {
+                            'data-red-flag-reason': data.type,
+                            'data-red-flag-id': uid,
+                            'data-red-flag-custom-description': data.custom_description ? data.custom_description : '',
+                            'data-red-flag-tooltip': `${data.type} ${data.custom_description ? data.custom_description : ''}`,
+                            'title': data.type,
+                            'x-highlight:annotator': 'findStep({value, key}) && shouldHighlight({value, key})',
+                            //'data-mce-author': data.author ? data.author : 'anonymous'
+                          }
+                        })
+                      });
+
+                    editor.annotator.annotationChanged('redflag', (state, name, obj) => {
+                      if (state === false) {
+                        console.log(`We are no longer in a ${name} area`);
+                      } else {
+                        console.log(`We are now in comment: ${obj.uid}`);
+                      }
+                    });
+                });
             },
             disabled: @js($isDisabled),
             locale: '{{ app()->getLocale() }}',
@@ -104,7 +183,7 @@
             image_description: @js($imageDescription()),
             image_class_list: {!! $getImageClassList() !!},
             license_key: '{{ $getLicenseKey() }}',
-            custom_configs: {{ $getCustomConfigs() }},
+            custom_configs: @js($getCustomConfigs()),
         })">
         @unless ($isDisabled())
             <input id="{{ $textareaID }}" type="hidden" x-ref="tinymce" placeholder="{{ $getPlaceholder() }}">
@@ -116,3 +195,4 @@
         @endunless
     </div>
 </x-dynamic-component>
+

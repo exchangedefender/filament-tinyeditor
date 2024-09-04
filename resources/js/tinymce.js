@@ -12,7 +12,6 @@ export default function tinyeditor({
 	skin = "oxide",
 	content_css = "default",
 	toolbar_sticky = false,
-	templates = "",
 	menubar = false,
 	font_size_formats = '',
 	fontfamily = '',
@@ -29,6 +28,8 @@ export default function tinyeditor({
 	locale = "en",
 	license_key = "gpl",
 	placeholder = null,
+	external_plugins = {},
+
 }) {
 	let editors = window.filamentTinyEditors || {};
 	return {
@@ -46,7 +47,6 @@ export default function tinyeditor({
 		plugins: plugins,
 		toolbar: toolbar,
 		toolbar_sticky: toolbar_sticky,
-		templates: templates,
 		menubar: menubar,
 		relative_urls: relative_urls,
 		remove_script_host: remove_script_host,
@@ -64,11 +64,15 @@ export default function tinyeditor({
 		disabled,
 		locale: locale,
 		init() {
-			this.initEditor(state.initialValue);
-
-			window.filamentTinyEditors = editors;
+			console.log('state is', state.initialValue)
+			if(!!state?.initialValue) {
+				this.initEditor(state.initialValue);
+				window.filamentTinyEditors = editors;
+			}
 
 			this.$watch("state", (newState, oldState) => {
+
+
 				if (newState === "<p></p>" && newState !== this.editor().getContent()) {
 					editors[this.statePath].destroy();
 					this.initEditor(newState);
@@ -99,17 +103,17 @@ export default function tinyeditor({
 				skin: skin,
 				content_css: content_css,
 				plugins: plugins,
+				external_plugins: external_plugins,
 				toolbar: toolbar,
 				toolbar_sticky: toolbar_sticky,
 				toolbar_sticky_offset: 64,
 				toolbar_mode: "sliding",
-				templates: templates,
 				menubar: menubar,
 				menu: {
 					file: { title: "File", items: "newdocument restoredraft | preview | export print | deleteallconversations" },
 					edit: { title: "Edit", items: "undo redo | cut copy paste pastetext | selectall | searchreplace" },
 					view: { title: "View", items: "code | visualaid visualchars visualblocks | spellchecker | preview fullscreen | showcomments" },
-					insert: { title: "Insert", items: "image link media addcomment pageembed template codesample inserttable | charmap emoticons hr | pagebreak nonbreaking anchor tableofcontents | insertdatetime" },
+					insert: { title: "Insert", items: "image link media addcomment pageembed codesample inserttable | charmap emoticons hr | pagebreak nonbreaking anchor tableofcontents | insertdatetime" },
 					format: { title: "Format", items: "bold italic underline strikethrough superscript subscript codeformat | styles blocks fontfamily fontsize align lineheight | forecolor backcolor | language | removeformat" },
 					tools: { title: "Tools", items: "spellchecker spellcheckerlanguage | a11ycheck code wordcount" },
 					table: { title: "Table", items: "inserttable | cell row column | advtablesort | tableprops deletetable" },
@@ -140,7 +144,8 @@ export default function tinyeditor({
 
 					editor.on("blur", function (e) {
 						_this.updatedAt = Date.now();
-						_this.state = editor.getContent();
+						_this.state = editor.getContent({no_events: true});
+
 					});
 
 					editor.on("init", function (e) {
