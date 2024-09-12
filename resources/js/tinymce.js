@@ -65,7 +65,7 @@ export default function tinyeditor({
 		locale: locale,
 		init() {
 			console.log('state is', state.initialValue)
-			if(!!state?.initialValue) {
+			if(typeof state?.initialValue !== "undefined") {
 				this.initEditor(state.initialValue);
 				window.filamentTinyEditors = editors;
 			}
@@ -73,7 +73,7 @@ export default function tinyeditor({
 			this.$watch("state", (newState, oldState) => {
 
 
-				if (newState === "<p></p>" && newState !== this.editor().getContent()) {
+				if ((typeof newState !== 'undefined' && typeof oldState === 'undefined') && newState !== this.editor().getContent()) {
 					editors[this.statePath].destroy();
 					this.initEditor(newState);
 				}
